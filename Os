@@ -1,0 +1,359 @@
+import json
+import time
+import sys
+
+# ============================================================
+#  COLOR SYSTEM (Matrix Hacker Style)
+# ============================================================
+
+class Color:
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+
+    MATRIX = "\033[92m"       # Bright green
+    MATRIX_DARK = "\033[32m"  # Darker green
+    MATRIX_FADE = "\033[2;32m"
+
+    RED = "\033[91m"
+    CYAN = "\033[96m"
+    YELLOW = "\033[93m"
+
+
+# ============================================================
+#  GLOBALS
+# ============================================================
+
+attempt = 3
+tasks = []
+users = {}
+files = {}
+
+
+# ============================================================
+#  UTILITY FUNCTIONS
+# ============================================================
+
+def slow_print(text, delay=0.03):
+    for char in text:
+        sys.stdout.write(char)
+        sys.stdout.flush()
+        time.sleep(delay)
+    print()
+
+
+# ============================================================
+#  TITLE SCREEN + BOOT SEQUENCE
+# ============================================================
+
+def title_screen():
+    print("\n" * 3)
+    print(Color.MATRIX + Color.BOLD + r"""
+ ██████╗ ███╗   ██╗██╗██╗     
+██╔═══██╗████╗  ██║██║██║     
+██║   ██║██╔██╗ ██║██║██║     
+██║   ██║██║╚██╗██║██║██║     
+╚██████╔╝██║ ╚████║██║███████╗
+ ╚═════╝ ╚═╝  ╚═══╝╚═╝╚══════╝
+""" + Color.RESET)
+
+    print(Color.MATRIX_DARK + Color.BOLD + "               O   N   I   L" + Color.RESET)
+    print("\n" * 2)
+    time.sleep(1.2)
+
+
+def boot_sequence():
+    steps = [
+        "Initializing kernel modules...",
+        "Decrypting system memory...",
+        "Bootstrapping ONIL environment...",
+        "Establishing encrypted channels...",
+        "Launching ONIL core..."
+    ]
+
+    for step in steps:
+        slow_print(Color.MATRIX + step + " [OK]" + Color.RESET, 0.02)
+        time.sleep(0.1)
+
+    print()
+
+
+# ============================================================
+#  JSON LOADING / SAVING
+# ============================================================
+
+def load_json(path, default):
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        with open(path, "w") as f:
+            json.dump(default, f, indent=4)
+        return default
+
+
+def save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=4)
+
+
+# Load databases
+USERS_DB = "users.json"
+FILES_DB = "files.json"
+TASK_DB = "tasks.json"
+
+users = load_json(USERS_DB, {})
+files = load_json(FILES_DB, {})
+tasks = load_json(TASK_DB, [])
+
+
+# ============================================================
+#  USER SYSTEM
+# ============================================================
+
+def create_account():
+    print(Color.CYAN + "== Create Account ==" + Color.RESET)
+    username = input(Color.MATRIX + "New username: " + Color.RESET)
+    if username in users:
+        print(Color.RED + "Username already exists" + Color.RESET)
+        return
+    password = input(Color.MATRIX + "New password: " + Color.RESET)
+    users[username] = password
+    save_json(USERS_DB, users)
+    slow_print(Color.MATRIX + "Account successfully created" + Color.RESET)
+
+
+def login():
+    global attempt
+    while attempt > 0:
+        print(Color.CYAN + "== LOGIN ==" + Color.RESET)
+        username = input(Color.MATRIX + "Enter username: " + Color.RESET)
+        password = input(Color.MATRIX + "Enter password: " + Color.RESET)
+        if username in users and users[username] == password:
+            print(Color.MATRIX + "Authenticating..." + Color.RESET)
+            time.sleep(0.3)
+            print(Color.MATRIX + "== ACCESS GRANTED ==" + Color.RESET)
+            attempt = 3
+            return username
+        else:
+            attempt -= 1
+            print(Color.RED + f"Incorrect credentials. {attempt} attempts left." + Color.RESET)
+
+    print(Color.RED + "ACCESS DENIED" + Color.RESET)
+    return None
+
+
+def delete_user():
+    print(Color.CYAN + "== Delete User ==" + Color.RESET)
+    username = input(Color.MATRIX + "Enter username: " + Color.RESET)
+    if username not in users:
+        print(Color.RED + "User not found" + Color.RESET)
+        return
+    del users[username]
+    save_json(USERS_DB, users)
+    print(Color.MATRIX + "User deleted." + Color.RESET)
+
+
+def list_users():
+    print(Color.CYAN + "== Users ==" + Color.RESET)
+    if not users:
+        print(Color.YELLOW + "No users found." + Color.RESET)
+        return
+    for index, username in enumerate(users, start=1):
+        print(Color.MATRIX + f"{index}. {username}" + Color.RESET)
+
+
+# ============================================================
+#  FILE SYSTEM
+# ============================================================
+
+def create_file():
+    print(Color.CYAN + "== Create File ==" + Color.RESET)
+    filename = input(Color.MATRIX + "Enter file name: " + Color.RESET)
+    if filename in files:
+        print(Color.RED + "File already exists" + Color.RESET)
+        return
+    content = input(Color.MATRIX + "Enter file content: " + Color.RESET)
+    files[filename] = content
+    save_json(FILES_DB, files)
+    print(Color.MATRIX + "File created." + Color.RESET)
+
+
+def read_file():
+    filename = input(Color.MATRIX + "Enter file name: " + Color.RESET)
+    if filename not in files:
+        print(Color.RED + "File not found" + Color.RESET)
+        return
+    print(Color.CYAN + "== File Content ==" + Color.RESET)
+    print(Color.MATRIX + files[filename] + Color.RESET)
+
+
+def delete_file():
+    print(Color.CYAN + "== Delete File ==" + Color.RESET)
+    filename = input(Color.MATRIX + "Enter file name: " + Color.RESET)
+    if filename not in files:
+        print(Color.RED + "File not found" + Color.RESET)
+        return
+    del files[filename]
+    save_json(FILES_DB, files)
+    print(Color.MATRIX + "File deleted." + Color.RESET)
+
+
+def list_files():
+    print(Color.CYAN + "== Files ==" + Color.RESET)
+    if not files:
+        print(Color.YELLOW + "No files found." + Color.RESET)
+        return
+    for index, filename in enumerate(files, start=1):
+        print(Color.MATRIX + f"{index}. {filename}" + Color.RESET)
+
+
+# ============================================================
+#  TASK SYSTEM
+# ============================================================
+
+def add_task():
+    print(Color.CYAN + "== Add Task ==" + Color.RESET)
+    new_task = input(Color.MATRIX + "Enter task: " + Color.RESET).strip()
+
+    for t in tasks:
+        if t["task"] == new_task:
+            print(Color.RED + "Task already exists" + Color.RESET)
+            return
+
+    tasks.append({"task": new_task, "done": False})
+    save_json(TASK_DB, tasks)
+    print(Color.MATRIX + "Task added." + Color.RESET)
+
+
+def list_tasks():
+    print(Color.CYAN + "== Tasks ==" + Color.RESET)
+    if not tasks:
+        print(Color.YELLOW + "No tasks found." + Color.RESET)
+        return
+
+    for index, t in enumerate(tasks, start=1):
+        status = Color.MATRIX + "[✓]" + Color.RESET if t["done"] else Color.RED + "[ ]" + Color.RESET
+        print(f"{index}. {status} {Color.MATRIX}{t['task']}{Color.RESET}")
+
+
+def delete_task():
+    print(Color.CYAN + "== Delete Task ==" + Color.RESET)
+    if not tasks:
+        print(Color.YELLOW + "No tasks to delete." + Color.RESET)
+        return
+
+    list_tasks()
+
+    try:
+        num = int(input(Color.MATRIX + "Enter task number: " + Color.RESET))
+        if num < 1 or num > len(tasks):
+            print(Color.RED + "Invalid number." + Color.RESET)
+            return
+    except ValueError:
+        print(Color.RED + "Enter a valid number." + Color.RESET)
+        return
+
+    removed = tasks.pop(num - 1)
+    save_json(TASK_DB, tasks)
+    print(Color.MATRIX + f"Task '{removed['task']}' deleted." + Color.RESET)
+
+
+def mark_task_complete():
+    list_tasks()
+    if not tasks:
+        return
+
+    try:
+        num = int(input(Color.MATRIX + "Enter task number: " + Color.RESET))
+        if num < 1 or num > len(tasks):
+            print(Color.RED + "Invalid number." + Color.RESET)
+            return
+    except ValueError:
+        print(Color.RED + "Enter a valid number." + Color.RESET)
+        return
+
+    tasks[num - 1]["done"] = True
+    save_json(TASK_DB, tasks)
+    print(Color.MATRIX + "Task marked complete." + Color.RESET)
+
+
+# ============================================================
+#  MAIN MENU
+# ============================================================
+
+def menu():
+    current_user = None
+    while True:
+        print(Color.MATRIX + Color.BOLD + "\n== ONIL COMMANDS ==" + Color.RESET)
+
+        if current_user:
+            print(Color.CYAN + "1." + Color.RESET, "Logout")
+            print(Color.CYAN + "2." + Color.RESET, "Create task")
+            print(Color.CYAN + "3." + Color.RESET, "Create file")
+            print(Color.CYAN + "4." + Color.RESET, "Read file")
+            print(Color.CYAN + "5." + Color.RESET, "Exit")
+            print(Color.CYAN + "6." + Color.RESET, "Delete file")
+            print(Color.CYAN + "7." + Color.RESET, "List files")
+            print(Color.CYAN + "8." + Color.RESET, "List users")
+            print(Color.CYAN + "9." + Color.RESET, "List tasks")
+            print(Color.CYAN + "10." + Color.RESET, "Delete user")
+            print(Color.CYAN + "11." + Color.RESET, "Delete task")
+            print(Color.CYAN + "12." + Color.RESET, "Mark task complete")
+        else:
+            print(Color.CYAN + "1." + Color.RESET, "Login")
+            print(Color.CYAN + "2." + Color.RESET, "Create account")
+            print(Color.CYAN + "3." + Color.RESET, "Exit")
+
+        choice = input(Color.MATRIX + "Select option: " + Color.RESET)
+
+        if not current_user:
+            if choice == '1':
+                current_user = login()
+                if current_user:
+                    print(Color.MATRIX + f"Welcome, {current_user}" + Color.RESET)
+            elif choice == '2':
+                create_account()
+            elif choice == '3':
+                print(Color.RED + "Shutting down..." + Color.RESET)
+                break
+
+        else:
+            if choice == '1':
+                print(Color.YELLOW + "Logging out..." + Color.RESET)
+                current_user = None
+            elif choice == '2':
+                add_task()
+            elif choice == '3':
+                create_file()
+            elif choice == '4':
+                read_file()
+            elif choice == '5':
+                print(Color.RED + "Shutting down..." + Color.RESET)
+                break
+            elif choice == '6':
+                delete_file()
+            elif choice == '7':
+                list_files()
+            elif choice == '8':
+                list_users()
+            elif choice == '9':
+                list_tasks()
+            elif choice == '10':
+                delete_user()
+            elif choice == '11':
+                delete_task()
+            elif choice == '12':
+                mark_task_complete()
+
+
+# ============================================================
+#  STARTUP WRAPPER
+# ============================================================
+
+def start_os():
+    title_screen()
+    boot_sequence()
+    menu()
+
+
+start_os()
