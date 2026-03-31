@@ -1,0 +1,276 @@
+import json
+import time
+import sys
+
+# ============================================================
+#  GLOBALS
+# ============================================================
+
+attempt = 3
+users = {}
+files = {}
+
+# ============================================================
+#  UTILITY FUNCTIONS
+# ============================================================
+
+def slow_print(text, delay=0.03):
+    for char in text:
+        sys.stdout.write(char)
+        sys.stdout.flush()
+        time.sleep(delay)
+    print()
+
+# ============================================================
+#  TITLE SCREEN + BOOT SEQUENCE
+# ============================================================
+input("Press Enter to continue")
+
+def title_screen():
+    print("\n" * 3)
+    print(r"""
+ ██████╗ ███╗   ██╗██╗██╗     
+██╔═══██╗████╗  ██║██║██║     
+██║   ██║██╔██╗ ██║██║██║     
+██║   ██║██║╚██╗██║██║██║     
+╚██████╔╝██║ ╚████║██║███████╗
+ ╚═════╝ ╚═╝  ╚═══╝╚═╝╚══════╝
+""")
+    print("               O   N   I   L")
+    print("\n" * 2)
+    time.sleep(1.2)
+
+#===============================================
+#          boot sequence
+#===============================================
+
+def boot_sequence():
+    steps = [
+        "Initializing kernel modules...",
+        "Decrypting system memory...",
+        "Bootstrapping ONIL environment...",
+        "Establishing encrypted channels...",
+        "Launching ONIL core..."
+    ]
+
+    for step in steps:
+        slow_print(step + " [OK]", 0.02)
+        time.sleep(0.1)
+
+    print()
+
+#===============================================
+#          shutdown sequence
+#===============================================
+
+def shutdown_sequence():
+    steps = [
+        "Closing active sessions...",
+        "Terminating background processes...",
+        "Flushing volatile memory...",
+        "Disengaging kernel modules...",
+        "Powering down ONIL core..."
+    ]
+
+    print("\n[ SYSTEM NOTICE ]")
+    for step in steps:
+        slow_print(step + " [OK]", 0.02)
+        time.sleep(0.1)
+
+    slow_print("\n███ SYSTEM HALT INITIATED ███", 0.03)
+    time.sleep(0.5)
+
+    slow_print("\nShutting down...", 0.04)
+    time.sleep(0.5)
+
+    for i in ["3", "2", "1"]:
+        slow_print(i, 0.3)
+        time.sleep(0.2)
+
+    slow_print("\nONIL offline.", 0.04)
+
+
+# ============================================================
+#  JSON LOADING / SAVING
+# ============================================================
+
+def load_json(path, default):
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        with open(path, "w") as f:
+            json.dump(default, f, indent=4)
+        return default
+
+def save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=4)
+
+# Load databases
+USERS_DB = "users.json"
+FILES_DB = "files.json"
+
+users = load_json(USERS_DB, {})
+files = load_json(FILES_DB, {})
+
+# ============================================================
+#  USER SYSTEM
+# ============================================================
+
+def create_account():
+    print("== Create Account ==")
+    username = input("New username: ")
+    if username in users:
+        print("Username already exists")
+        return
+    password = input("New password: ")
+    users[username] = password
+    save_json(USERS_DB, users)
+    slow_print("Account successfully created")
+
+def login():
+    global attempt
+    while attempt > 0:
+        print("== LOGIN ==")
+        username = input("Enter username: ")
+        password = input("Enter password: ")
+        if username in users and users[username] == password:
+            print("Authenticating...")
+            time.sleep(0.3)
+            print("== ACCESS GRANTED ==")
+            attempt = 3
+            return username
+        else:
+            attempt -= 1
+            print(f"Incorrect credentials. {attempt} attempts left.")
+
+    print("ACCESS DENIED")
+    return None
+
+def delete_user():
+    print("== Delete User ==")
+    username = input("Enter username: ")
+    if username not in users:
+        print("User not found")
+        return
+    del users[username]
+    save_json(USERS_DB, users)
+    print("User deleted.")
+
+def list_users():
+    print("== Users ==")
+    if not users:
+        print("No users found.")
+        return
+    for index, username in enumerate(users, start=1):
+        print(f"{index}. {username}")
+
+# ============================================================
+#  FILE SYSTEM
+# ============================================================
+
+def create_file():
+    print("== Create File ==")
+    filename = input("Enter file name: ")
+    if filename in files:
+        print("File already exists")
+        return
+    content = input("Enter file content: ")
+    files[filename] = content
+    save_json(FILES_DB, files)
+    print("File created.")
+
+def read_file():
+    filename = input("Enter file name: ")
+    if filename not in files:
+        print("File not found")
+        return
+    print("== File Content ==")
+    print(files[filename])
+
+def delete_file():
+    print("== Delete File ==")
+    filename = input("Enter file name: ")
+    if filename not in files:
+        print("File not found")
+        return
+    del files[filename]
+    save_json(FILES_DB, files)
+    print("File deleted.")
+
+def list_files():
+    print("== Files ==")
+    if not files:
+        print("No files found.")
+        return
+    for index, filename in enumerate(files, start=1):
+        print(f"{index}. {filename}")
+
+# ============================================================
+#  MAIN MENU
+# ============================================================
+
+def menu():
+    current_user = None
+    while True:
+        print("\n== ONIL COMMANDS ==")
+
+        if current_user:
+            print("1. Logout")
+            print("2. Create file")
+            print("3. Read file")
+            print("4. Delete file")
+            print("5. List files")
+            print("6. List users")
+            print("7. Delete user")
+            print("8. Exit")
+        else:
+            print("1. Login")
+            print("2. Create account")
+            print("3. Exit")
+
+        choice = input("Select option: ")
+
+        if not current_user:
+            if choice == '1':
+                current_user = login()
+                if current_user:
+                    print(f"Welcome, {current_user}")
+            elif choice == '2':
+                create_account()
+            elif choice == '3':
+                print("Shutting down...")
+                shutdown_sequence()
+                break
+
+        else:
+            if choice == '1':
+                print("Logging out...")
+                current_user = None
+            elif choice == '2':
+                create_file()
+            elif choice == '3':
+                read_file()
+            elif choice == '4':
+                delete_file()
+            elif choice == '5':
+                list_files()
+            elif choice == '6':
+                list_users()
+            elif choice == '7':
+                delete_user()
+            elif choice == '8':
+                shutdown_sequence()
+                break
+
+# ============================================================
+#  STARTUP WRAPPER
+# ============================================================
+
+def start_os():
+    title_screen()
+    boot_sequence()
+    menu()
+
+start_os()
