@@ -165,12 +165,17 @@ if not admin_exists():
 # ============================================================
 
 def create_account():
+  while True:
     print(Color.CYAN + "== Create Account ==" + Color.RESET)
     username = input(Color.MATRIX + "New username: " + Color.RESET)
     if username in users:
         print(Color.RED + "Username already exists" + Color.RESET)
         return
     password = input(Color.MATRIX + "New password: " + Color.RESET)
+    if len(password) >= 3:
+      break
+    else:
+      print("password too short, try again")
 
     users[username] = {
         "password": password,
@@ -182,24 +187,23 @@ def create_account():
 
 
 def login():
-    global attempt
-    while attempt > 0:
-        print(Color.CYAN + "== LOGIN ==" + Color.RESET)
-        username = input(Color.MATRIX + "Enter username: " + Color.RESET)
-        password = input(Color.MATRIX + "Enter password: " + Color.RESET)
+  global attempt
+  while attempt > 0:
+    print(Color.CYAN + "== LOGIN ==" + Color.RESET)
+    username = input(Color.MATRIX + "Enter username: " + Color.RESET)
+    password = input(Color.MATRIX + "Enter password: " + Color.RESET)
+    if username in users and users[username]["password"] == password:
+      print(Color.MATRIX + "Authenticating..." + Color.RESET)
+      time.sleep(0.3)
+      print(Color.MATRIX + "== ACCESS GRANTED ==" + Color.RESET)
+      attempt = 3
+      return username, users[username]["role"]
+    else:
+      attempt -= 1
+      print(Color.RED + f"Incorrect credentials. {attempt} attempts left." + Color.RESET)
 
-        if username in users and users[username]["password"] == password:
-            print(Color.MATRIX + "Authenticating..." + Color.RESET)
-            time.sleep(0.3)
-            print(Color.MATRIX + "== ACCESS GRANTED ==" + Color.RESET)
-            attempt = 3
-            return username, users[username]["role"]
-        else:
-            attempt -= 1
-            print(Color.RED + f"Incorrect credentials. {attempt} attempts left." + Color.RESET)
-
-    print(Color.RED + "ACCESS DENIED" + Color.RESET)
-    return None, None
+  print(Color.RED + "ACCESS DENIED" + Color.RESET)
+  return None, None
 
 
 def delete_user():
