@@ -28,12 +28,47 @@ tasks = {}
 users = {}
 files = {}
 
+# ============================================================
+#  SETTINGS SYSTEM
+# ============================================================
+
+default_settings = {
+    "slow_print": True,
+    "boot_animation": True,
+    "theme": "matrix",
+    "boot_speed": "normal"
+}
+
+SETTINGS_DB = "settings.json"
+
+def load_json(path, default):
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.decoder.JSONDecodeError):
+        with open(path, "w") as f:
+            json.dump(default, f, indent=4)
+        return default
+
+def save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=4)
+
+settings = load_json(SETTINGS_DB, default_settings)
+
+def save_settings():
+    save_json(SETTINGS_DB, settings)
+
 
 # ============================================================
 #  UTILITY FUNCTIONS
 # ============================================================
 
 def slow_print(text, delay=0.03):
+    if not settings.get("slow_print", True):
+        print(text)
+        return
+
     for char in text:
         sys.stdout.write(char)
         sys.stdout.flush()
@@ -62,6 +97,9 @@ def title_screen():
 
 
 def boot_sequence():
+    if not settings.get("boot_animation", True):
+        return
+
     steps = [
         "Initializing kernel modules...",
         "Decrypting system memory...",
@@ -78,25 +116,9 @@ def boot_sequence():
 
 
 # ============================================================
-#  JSON LOADING / SAVING
+#  LOAD DATABASES
 # ============================================================
 
-def load_json(path, default):
-    try:
-        with open(path, "r") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.decoder.JSONDecodeError):
-        with open(path, "w") as f:
-            json.dump(default, f, indent=4)
-        return default
-
-
-def save_json(path, data):
-    with open(path, "w") as f:
-        json.dump(data, f, indent=4)
-
-
-# Load databases
 USERS_DB = "users.json"
 FILES_DB = "files.json"
 TASK_DB = "tasks.json"
@@ -134,7 +156,6 @@ def setup_admin():
     print(Color.MATRIX + f"Admin account '{username}' created." + Color.RESET)
 
 
-# Run setup if no admin exists
 if not admin_exists():
     setup_admin()
 
@@ -206,7 +227,7 @@ def list_users():
 
 
 # ============================================================
-#  FILE SYSTEM (PER-USER)
+#  FILE SYSTEM
 # ============================================================
 
 def create_file(current_user):
@@ -261,8 +282,26 @@ def list_files(current_user):
         print(Color.MATRIX + f"{index}. {filename}" + Color.RESET)
 
 
+def list_all_files():
+    print(Color.CYAN + "== ALL USER FILES ==" + Color.RESET)
+
+    if not files:
+        print(Color.YELLOW + "No files found." + Color.RESET)
+        return
+
+    for user, user_files in files.items():
+        print(Color.MATRIX + f"\nUser: {user}" + Color.RESET)
+
+        if not user_files:
+            print(Color.YELLOW + "  No files." + Color.RESET)
+            continue
+
+        for filename in user_files:
+            print(Color.MATRIX + f"  - {filename}" + Color.RESET)
+
+
 # ============================================================
-#  TASK SYSTEM (PER-USER)
+#  TASK SYSTEM
 # ============================================================
 
 def add_task(current_user):
@@ -272,7 +311,6 @@ def add_task(current_user):
     if current_user not in tasks:
         tasks[current_user] = []
 
-    # Check duplicates
     for t in tasks[current_user]:
         if t["task"] == new_task:
             print(Color.RED + "Task already exists" + Color.RESET)
@@ -338,7 +376,45 @@ def mark_task_complete(current_user):
 
 
 # ============================================================
-#  ADMIN FUNCTIONS
+#  SETTINGS MENU
+# ============================================================
+
+def settings_menu():
+    while True:
+        print(Color.CYAN + "== SETTINGS ==" + Color.RESET)
+        print(Color.CYAN + "1." + Color.RESET, "Toggle slow print")
+        print(Color.CYAN + "2." + Color.RESET, "Toggle boot animation")
+        print(Color.CYAN + "3." + Color.RESET, "Change theme")
+        print(Color.CYAN + "4." + Color.RESET, "Change boot speed")
+        print(Color.CYAN + "5." + Color.RESET, "Back")
+
+        choice = input(Color.MATRIX + "Select option: " + Color.RESET)
+
+        if choice == "1":
+            settings["slow_print"] = not settings["slow_print"]
+            print(Color.MATRIX + f"Slow print set to {settings['slow_print']}" + Color.RESET)
+
+        elif choice == "2":
+            settings["boot_animation"] = not settings["boot_animation"]
+            print(Color.MATRIX + f"Boot animation set to {settings['boot_animation']}" + Color.RESET)
+
+        elif choice == "3":
+            theme = input(Color.MATRIX + "Enter theme (matrix/blue/red/mono): " + Color.RESET)
+            settings["theme"] = theme
+            print(Color.MATRIX + f"Theme set to {theme}" + Color.RESET)
+
+        elif choice == "4":
+            speed = input(Color.MATRIX + "Boot speed (fast/normal/slow): " + Color.RESET)
+            settings["boot_speed"] = speed
+            print(Color.MATRIX + f"Boot speed set to {speed}" + Color.RESET)
+
+        elif choice == "5":
+            save_settings()
+            return
+
+
+# ============================================================
+#  ADMIN PANEL
 # ============================================================
 
 def make_admin():
@@ -359,7 +435,8 @@ def admin_panel():
     print(Color.CYAN + "== ADMIN PANEL ==" + Color.RESET)
     print(Color.CYAN + "1." + Color.RESET, "List all users")
     print(Color.CYAN + "2." + Color.RESET, "Make admin")
-    print(Color.CYAN + "3." + Color.RESET, "Exit admin panel")
+    print(Color.CYAN + "3." + Color.RESET, "List all files")
+    print(Color.CYAN + "4." + Color.RESET, "Exit admin panel")
 
     choice = input(Color.MATRIX + "Select option: " + Color.RESET)
 
@@ -368,6 +445,8 @@ def admin_panel():
     elif choice == "2":
         make_admin()
     elif choice == "3":
+        list_all_files()
+    elif choice == "4":
         return
 
 
@@ -395,12 +474,15 @@ def menu():
             print(Color.CYAN + "10." + Color.RESET, "Delete user")
             print(Color.CYAN + "11." + Color.RESET, "Delete task")
             print(Color.CYAN + "12." + Color.RESET, "Mark task complete")
+            print(Color.CYAN + "13." + Color.RESET, "Settings")
             if role == "admin":
-                print(Color.CYAN + "13." + Color.RESET, "Admin Panel")
+                print(Color.CYAN + "14." + Color.RESET, "Admin Panel")
+
         else:
             print(Color.CYAN + "1." + Color.RESET, "Login")
             print(Color.CYAN + "2." + Color.RESET, "Create account")
             print(Color.CYAN + "3." + Color.RESET, "Exit")
+            print(Color.CYAN + "4." + Color.RESET, "Settings")
 
         choice = input(Color.MATRIX + "Select option: " + Color.RESET)
 
@@ -414,6 +496,8 @@ def menu():
             elif choice == '3':
                 print(Color.RED + "Shutting down..." + Color.RESET)
                 break
+            elif choice == '4':
+                settings_menu()
 
         else:
             if choice == '1':
@@ -443,7 +527,9 @@ def menu():
                 delete_task(current_user)
             elif choice == '12':
                 mark_task_complete(current_user)
-            elif choice == '13' and role == "admin":
+            elif choice == '13':
+                settings_menu()
+            elif choice == '14' and role == "admin":
                 admin_panel()
 
 
