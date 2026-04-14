@@ -1,0 +1,39 @@
+import json
+exercises = {}
+
+
+
+
+
+def load_json(path,default):
+  try:
+    with open(path,"r") as f:   
+      return json.load(f)
+  except (FileNotFoundError, json.decoder.JSONDecodeError):
+    with open(path, "w") as f:
+      json.dump(default, f,indent=4)
+      return default
+
+def save_json(path,data):
+  with open(path, "w") as f:
+    json.dump(data,f,indent=4)
+    
+workout_DB = "exercises.json"
+exercises = load_json(workout_DB, {})
+
+def create_workout():
+  print("create workout")
+  workout = input("Enter workout: ")
+  if workout in exercises:
+    print("exercise already exist")
+    return
+  exercises[workout] ={
+  "2026-04-14": [
+    {"exercise": workout, "sets": 3, "reps": 8, "weight": 185}
+  ]
+}
+  print("Workout created")
+
+  save_json(workout_DB, exercises)
+create_workout()
+    
