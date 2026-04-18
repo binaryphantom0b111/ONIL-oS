@@ -80,7 +80,18 @@ def del_workout():
   save_json(workout_DB,exercises)
   print("workout deleted")
   
+def list_all_workouts():
+  if not exercises:
+    print("No workout found")
+    return
 
+  print("== All workouts == ")
+  for workout_name, dates in exercises.items():
+    print(f"\nWorkout: {workout_name}")
+    for day, entries in dates.items():
+      print(f"Date: {day}")
+      for e in entries:
+        print(f"    {e['exercise']} - {e['sets']}x{e['reps']} @ {e['weight']} lbs")
 
 def menu():
   while True:
@@ -88,7 +99,8 @@ def menu():
     print("1. create workout")
     print("2. show workout")
     print("3. delete workout")
-    print("4. exit menu")
+    print("4. list all workouts")
+    print("5. exits menu")
 
     choice = input("Choose option: ")
 
@@ -99,26 +111,10 @@ def menu():
     elif choice =="3":
       del_workout()
     elif choice =="4":
+      list_all_workouts()
+    elif choice =="5":
+      print("Exiting menu")
       break
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 menu()
