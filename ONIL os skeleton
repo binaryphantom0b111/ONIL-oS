@@ -436,7 +436,33 @@ def make_admin():
     save_json(USERS_DB, users)
 
     print(f"{username} is now an admin.")
+  
+def edit_user():
+  username = input("Enter username you want to edit: ")
+  if username not in users:
+    print("User not found")
+    return
 
+  print(f"Current username: {username}")
+  print(f"Current password: {users[username]['password']}")
+  print(f"Current role: {users[username]['role']}")
+
+ 
+  new_username = input("New username (leave blank to leave the same): ")
+  new_password = input("Change password (leave blank to leave the same): ")
+
+  if new_username:
+    users[new_username] = users.pop(username)
+    username = new_username
+
+  if new_password:
+    users[username]["password"] = new_password
+
+  save_json(USERS_DB,users)
+  print("User updated ")
+  
+    
+  
 
 def admin_panel(current_user):
     print("== ADMIN PANEL ==")
@@ -444,7 +470,8 @@ def admin_panel(current_user):
     print("2. Make admin")
     print("3. List all files")
     print("4. Edit files")
-    print("5. Exit admin panel")
+    print("5. Edit user")
+    print("6. Exit admin panel")
 
     choice = input("Select option: ")
 
@@ -457,6 +484,8 @@ def admin_panel(current_user):
     elif choice == "4":
         edit_files(current_user)
     elif choice == "5":
+        edit_user()
+    elif choice == "6":
       return
 
 
