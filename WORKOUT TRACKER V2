@@ -93,6 +93,42 @@ def list_all_workouts():
       for e in entries:
         print(f"    {e['exercise']} - {e['sets']}x{e['reps']} @ {e['weight']} lbs")
 
+
+def edit_workout():
+    workout = input("Enter workout name: ")
+    if workout not in exercises:
+        print("Workout not found")
+        return
+
+    date_key = input("Enter date (YYYY-MM-DD): ")
+    if date_key not in exercises[workout]:
+        print("Date not found")
+        return
+
+    entries = exercises[workout][date_key]
+
+    print("Entries for this date:")
+    for i, e in enumerate(entries):
+        print(f"{i}. {e['exercise']} - {e['sets']}x{e['reps']} @ {e['weight']} lbs")
+
+    index = int(input("Which entry number to edit: "))
+    if index < 0 or index >= len(entries):
+        print("Invalid entry number")
+        return
+
+    print("Enter new details:")
+    sets = int(input("Sets: "))
+    reps = int(input("Reps: "))
+    weight = int(input("Weight: "))
+
+    entries[index]["sets"] = sets
+    entries[index]["reps"] = reps
+    entries[index]["weight"] = weight
+
+    save_json(workout_DB, exercises)
+    print("Workout updated!")
+
+    
 def menu():
   while True:
     print("options menu")
@@ -100,7 +136,9 @@ def menu():
     print("2. show workout")
     print("3. delete workout")
     print("4. list all workouts")
-    print("5. exits menu")
+    print("5. edit workout")
+    print("6. exits menu")
+
 
     choice = input("Choose option: ")
 
@@ -113,7 +151,9 @@ def menu():
     elif choice =="4":
       list_all_workouts()
     elif choice =="5":
-      print("Exiting menu")
+      edit_workout()
+    elif choice =="6":
+      print("Exiting menu ")
       break
 
 
