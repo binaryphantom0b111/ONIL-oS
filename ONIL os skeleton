@@ -498,79 +498,101 @@ def menu():
     role = None
 
     while True:
-        print("\n== ONIL COMMANDS ==")
+        print("\n=== MAIN MENU ===")
 
-        if current_user:
-            print("1. Logout")
-            print("2. Create task")
-            print("3. Create file")
-            print("4. Read file")
-            print("5. Exit")
-            print("6. Delete file")
-            print("7. List files")
-            print("8. List users")
-            print("9. List tasks")
-            print("10. Delete user")
-            print("11. Delete task")
-            print("12. Mark task complete")
-            print("13. Settings")
-            if role == "admin":
-                print("14. Admin Panel")
-
-        else:
+        # -------------------------
+        # WORLD 1: NOT LOGGED IN
+        # -------------------------
+        if not current_user:
             print("1. Login")
-            print("2. Create account")
-            print("3. Exit")
+            print("2. Create Account")
+            print("3. Shutdown")
             print("4. Settings")
 
-        choice = input("Select option: ")
+            choice = input("Choose: ")
 
-        if not current_user:
-            if choice == '1':
+            if choice == "1":
                 current_user, role = login()
                 if current_user:
                     print(f"Welcome, {current_user} ({role})")
-            elif choice == '2':
+
+            elif choice == "2":
                 create_account()
-            elif choice == '3':
+
+            elif choice == "3":
                 print("Shutting down...")
                 break
-            elif choice == '4':
+
+            elif choice == "4":
                 settings_menu()
 
+        # -------------------------
+        # WORLD 2: LOGGED IN
+        # -------------------------
         else:
-            if choice == '1':
+            print("1. Logout")
+            print("2. Add Task")
+            print("3. Create File")
+            print("4. Read File")
+            print("5. Shutdown")
+            print("6. Delete File")
+            print("7. List Files")
+            print("8. List Users")
+            print("9. List Tasks")
+            print("10. Delete User")
+            print("11. Delete Task")
+            print("12. Mark Task Complete")
+            print("13. Settings")
+
+            if role == "admin":
+                print("14. Admin Panel")
+
+            choice = input("Choose: ")
+
+            if choice == "1":
                 print("Logging out...")
                 current_user = None
                 role = None
-            elif choice == '2':
+
+            elif choice == "2":
                 add_task(current_user)
-            elif choice == '3':
+
+            elif choice == "3":
                 create_file(current_user)
-            elif choice == '4':
+
+            elif choice == "4":
                 read_file(current_user)
-            elif choice == '5':
+
+            elif choice == "5":
                 print("Shutting down...")
                 break
-            elif choice == '6':
-                delete_file(current_user)
-            elif choice == '7':
-                list_files(current_user)
-            elif choice == '8':
-                list_users()
-            elif choice == '9':
-                list_tasks(current_user)
-            elif choice == '10':
-                delete_user()
-            elif choice == '11':
-                delete_task(current_user)
-            elif choice == '12':
-                mark_task_complete(current_user)
-            elif choice == '13':
-                settings_menu()
-            elif choice == '14' and role == "admin":
-                admin_panel(current_user)
 
+            elif choice == "6":
+                delete_file(current_user)
+
+            elif choice == "7":
+                list_files(current_user)
+
+            elif choice == "8":
+                list_users()
+
+            elif choice == "9":
+                list_tasks(current_user)
+
+            elif choice == "10":
+                delete_user()
+
+            elif choice == "11":
+                delete_task(current_user)
+
+            elif choice == "12":
+                mark_task_complete(current_user)
+
+            elif choice == "13":
+                settings_menu()
+
+            elif choice == "14" and role == "admin":
+                admin_panel(current_user)
 
 # ============================================================
 #  STARTUP WRAPPER
