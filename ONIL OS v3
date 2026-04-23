@@ -1,0 +1,642 @@
+import json
+import time
+import sys
+
+# ============================================================
+#  GLOBALS
+# ============================================================
+
+
+#============================================================
+#               THEMES
+#============================================================
+
+
+THEMES = {
+    "matrix": "\033[92m",
+    "blue": "\033[94m",
+    "red": "\033[91m",
+    "mono": "\033[0m",
+
+    # NEW:
+    "dark": "\033[90m",   # grey/dim
+    "light": "\033[97m"   # bright white
+}
+
+attempt = 3
+tasks = {}
+users = {}
+files = {}
+
+# ============================================================
+#  SETTINGS SYSTEM
+# ============================================================
+
+default_settings = {
+    "slow_print": True,
+    "boot_animation": True,
+    "theme": "matrix",
+    "boot_speed": "normal"
+}
+
+SETTINGS_DB = "settings.json"
+
+
+def apply_theme():
+    color = THEMES.get(settings["theme"], "\033[0m")
+    print(color, end="")
+def load_json(path, default):
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.decoder.JSONDecodeError):
+        with open(path, "w") as f:
+            json.dump(default, f, indent=4)
+        return default
+
+def save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=4)
+
+settings = load_json(SETTINGS_DB, default_settings)
+apply_theme()
+
+def save_settings():
+    save_json(SETTINGS_DB, settings)
+
+
+# ============================================================
+#  UTILITY FUNCTIONS
+# ============================================================
+
+def slow_print(text, delay=0.03):
+    if not settings.get("slow_print", True):
+        print(text)
+        return
+
+    for char in text:
+        sys.stdout.write(char)
+        sys.stdout.flush()
+        time.sleep(delay)
+    print()
+
+
+# ============================================================
+#  TITLE SCREEN + BOOT SEQUENCE
+# ============================================================
+
+def title_screen():
+    print("\n" * 3)
+    print(r"""
+ ██████╗ ███╗   ██╗██╗██╗     
+██╔═══██╗████╗  ██║██║██║     
+██║   ██║██╔██╗ ██║██║██║     
+██║   ██║██║╚██╗██║██║██║     
+╚██████╔╝██║ ╚████║██║███████╗
+ ╚═════╝ ╚═╝  ╚═══╝╚═╝╚══════╝
+""")
+    print("               O   N   I   L")
+    print("\n" * 2)
+    time.sleep(1.2)
+
+
+def boot_sequence():
+    if not settings.get("boot_animation", True):
+        return
+
+    steps = [
+        "Initializing kernel modules...",
+        "Decrypting system memory...",
+        "Bootstrapping ONIL environment...",
+        "Establishing encrypted channels...",
+        "Launching ONIL core..."
+    ]
+
+    for step in steps:
+        slow_print(step + " [OK]", 0.02)
+        time.sleep(0.1)
+
+    print()
+
+
+# ============================================================
+#  LOAD DATABASES
+# ============================================================
+
+USERS_DB = "users.json"
+FILES_DB = "files.json"
+TASK_DB = "tasks.json"
+
+users = load_json(USERS_DB, {})
+files = load_json(FILES_DB, {})
+tasks = load_json(TASK_DB, {})
+
+
+# ============================================================
+#  FIRST-TIME ADMIN SETUP
+# ============================================================
+
+def admin_exists():
+    for username in users:
+        if users[username]["role"] == "admin":
+            return True
+    return False
+
+
+def setup_admin():
+    print("== FIRST TIME SETUP ==")
+    print("No admin account found.")
+    print("Create the first admin account.")
+
+    username = input("Admin username: ")
+    password = input("Admin password: ")
+
+    users[username] = {
+        "password": password,
+        "role": "admin",
+        "clearance": "top secret"
+    }
+
+    save_json(USERS_DB, users)
+    print(f"Admin account '{username}' created.")
+
+
+if not admin_exists():
+    setup_admin()
+
+
+# ============================================================
+#  USER SYSTEM
+# ============================================================
+
+def create_account():
+    while True:
+        print("== Create Account ==")
+        username = input("New username: ")
+        if username in users:
+            print("Username already exists")
+            return
+        password = input("New password: ")
+        if len(password) >= 3:
+            break
+        else:
+            print("Password too short, try again")
+
+    users[username] = {
+        "password": password,
+        "role": "user",
+        "clearance": "secret"
+    }
+
+    save_json(USERS_DB, users)
+    slow_print("Account successfully created")
+
+
+def login():
+    global attempt
+    while attempt > 0:
+        print("== LOGIN ==")
+        username = input("Enter username: ")
+        password = input("Enter password: ")
+        if username in users and users[username]["password"] == password:
+            print("Authenticating...")
+            time.sleep(0.3)
+            print("== ACCESS GRANTED ==")
+            attempt = 3
+            return username, users[username]["role"], users[username]["clearance"]
+        else:
+            attempt -= 1
+            print(f"Incorrect credentials. {attempt} attempts left.")
+
+    print("ACCESS DENIED")
+    return None, None, None
+
+
+def delete_user():
+    print("== Delete User ==")
+    username = input("Enter username: ")
+    if username not in users:
+        print("User not found")
+        return
+    if users[username]["role"] == "admin":
+        print("Cannot delete an admin.")
+        return
+    del users[username]
+    save_json(USERS_DB, users)
+    print("User deleted.")
+
+
+def list_users():
+    print("== Users ==")
+    if not users:
+        print("No users found.")
+        return
+    for index, username in enumerate(users, start=1):
+        role = users[username].get("role", "user")
+        print(f"{index}. {username} ({role})")
+
+
+# ============================================================
+#  FILE SYSTEM
+# ============================================================
+
+def create_file(current_user):
+    print("== Create File ==")
+    filename = input("Enter file name: ")
+
+    if current_user not in files:
+        files[current_user] = {}
+
+    if filename in files[current_user]:
+        print("File already exists")
+        return
+
+    content = input("Enter file content: ")
+    files[current_user][filename] = content
+    save_json(FILES_DB, files)
+    print("File created.")
+
+
+def read_file(current_user):
+    filename = input("Enter file name: ")
+
+    if current_user not in files or filename not in files[current_user]:
+        print("File not found")
+        return
+
+    print("== File Content ==")
+    print(files[current_user][filename])
+
+
+def delete_file(current_user):
+    print("== Delete File ==")
+    filename = input("Enter file name: ")
+
+    if current_user not in files or filename not in files[current_user]:
+        print("File not found")
+        return
+
+    del files[current_user][filename]
+    save_json(FILES_DB, files)
+    print("File deleted.")
+
+
+def list_files(current_user):
+    print("== Your Files ==")
+
+    if current_user not in files or not files[current_user]:
+        print("No files found.")
+        return
+
+    for index, filename in enumerate(files[current_user], start=1):
+        print(f"{index}. {filename}")
+
+def edit_files(current_user):
+  print("== edit file== ")
+  
+  filename = input("Enter filename: ")
+  if current_user not in files or not files[current_user]:
+    print("no files found")
+    return
+
+  if filename not in files[current_user]:
+    print("Files not found")
+    return
+
+  print(" == Current content == ")
+  print(files[current_user][filename])
+
+  new_content = input("Enter changes: ")
+  
+  files[current_user][filename] = new_content
+  save_json(FILES_DB,files)
+  print("File updated")
+  
+
+def list_all_files():
+    print("== ALL USER FILES ==")
+
+    if not files:
+        print("No files found.")
+        return
+
+    for user, user_files in files.items():
+        print(f"\nUser: {user}")
+
+        if not user_files:
+            print("  No files.")
+            continue
+
+        for filename in user_files:
+            print(f"  - {filename}")
+
+
+# ============================================================
+#  TASK SYSTEM
+# ============================================================
+
+def add_task(current_user):
+    print("== Add Task ==")
+    new_task = input("Enter task: ").strip()
+
+    if current_user not in tasks:
+        tasks[current_user] = []
+
+    for t in tasks[current_user]:
+        if t["task"] == new_task:
+            print("Task already exists")
+            return
+
+    tasks[current_user].append({"task": new_task, "done": False})
+    save_json(TASK_DB, tasks)
+    print("Task added.")
+
+
+def list_tasks(current_user):
+    print("== Tasks ==")
+    if current_user not in tasks or not tasks[current_user]:
+        print("No tasks found.")
+        return
+
+    for index, t in enumerate(tasks[current_user], start=1):
+        status = "[✓]" if t["done"] else "[ ]"
+        print(f"{index}. {status} {t['task']}")
+
+
+def delete_task(current_user):
+    print("== Delete Task ==")
+    if current_user not in tasks or not tasks[current_user]:
+        print("No tasks to delete.")
+        return
+
+    list_tasks(current_user)
+
+    try:
+        num = int(input("Enter task number: "))
+        if num < 1 or num > len(tasks[current_user]):
+            print("Invalid number.")
+            return
+    except ValueError:
+        print("Enter a valid number.")
+        return
+
+    removed = tasks[current_user].pop(num - 1)
+    save_json(TASK_DB, tasks)
+    print(f"Task '{removed['task']}' deleted.")
+
+
+def mark_task_complete(current_user):
+    if current_user not in tasks or not tasks[current_user]:
+        print("No tasks found.")
+        return
+
+    list_tasks(current_user)
+
+    try:
+        num = int(input("Enter task number: "))
+        if num < 1 or num > len(tasks[current_user]):
+            print("Invalid number.")
+            return
+    except ValueError:
+        print("Enter a valid number.")
+        return
+
+    tasks[current_user][num - 1]["done"] = True
+    save_json(TASK_DB, tasks)
+    print("Task marked complete.")
+
+
+# ============================================================
+#  SETTINGS MENU
+# ============================================================
+
+def settings_menu():
+    while True:
+        print("== SETTINGS ==")
+        print("1. Toggle slow print")
+        print("2. Toggle boot animation")
+        print("3. Change theme")
+        print("4. Change boot speed")
+        print("5. Back")
+
+        choice = input("Select option: ")
+
+        if choice == "1":
+            settings["slow_print"] = not settings["slow_print"]
+            print(f"Slow print set to {settings['slow_print']}")
+
+        elif choice == "2":
+            settings["boot_animation"] = not settings["boot_animation"]
+            print(f"Boot animation set to {settings['boot_animation']}")
+
+        elif choice == "3":
+            print("Available themes: matrix, blue, red, mono, dark, light")
+            theme = input("Enter theme: ").strip().lower()
+
+            if theme in THEMES:
+                settings["theme"] = theme
+                apply_theme()
+                print(f"Theme set to {theme}")
+            else:
+                print("Invalid theme")
+
+
+        elif choice == "4":
+            speed = input("Boot speed (fast/normal/slow): ")
+            settings["boot_speed"] = speed
+            print(f"Boot speed set to {speed}")
+
+        elif choice == "5":
+            save_settings()
+            return
+
+
+# ============================================================
+#  ADMIN PANEL
+# ============================================================
+
+def make_admin():
+    print("== MAKE ADMIN ==")
+    username = input("Enter username to promote: ")
+
+    if username not in users:
+        print("User not found.")
+        return
+
+    users[username]["role"] = "admin"
+    save_json(USERS_DB, users)
+
+    print(f"{username} is now an admin.")
+  
+def edit_user():
+  username = input("Enter username you want to edit: ")
+  if username not in users:
+    print("User not found")
+    return
+
+  print(f"Current username: {username}")
+  print(f"Current password: {users[username]['password']}")
+  print(f"Current role: {users[username]['role']}")
+  print(f"Current clearance:{ users[username]['clearance']}")
+
+
+ 
+  new_username = input("New username (leave blank to leave the same): ")
+  new_password = input("Change password (leave blank to leave the same): ")
+
+  if new_username:
+    users[new_username] = users.pop(username)
+    username = new_username
+
+  if new_password:
+    users[username]["password"] = new_password
+
+  save_json(USERS_DB,users)
+  print("User updated ")
+  
+    
+  
+
+def admin_panel(current_user):
+    print("== ADMIN PANEL ==")
+    print("1. List all users")
+    print("2. Make admin")
+    print("3. List all files")
+    print("4. Edit files")
+    print("5. Edit user")
+    print("6. Exit admin panel")
+
+    choice = input("Select option: ")
+
+    if choice == "1":
+        list_users()
+    elif choice == "2":
+        make_admin()
+    elif choice == "3":
+        list_all_files()
+    elif choice == "4":
+        edit_files(current_user)
+    elif choice == "5":
+        edit_user()
+    elif choice == "6":
+      return
+
+
+# ============================================================
+#  MAIN MENU
+# ============================================================
+
+def menu():
+    current_user = None
+    role = None
+    clearance = None
+
+    while True:
+        print("\n=== MAIN MENU ===")
+
+        # -------------------------
+        # WORLD 1: NOT LOGGED IN
+        # -------------------------
+        if not current_user:
+            print("1. Login")
+            print("2. Create Account")
+            print("3. Shutdown")
+            print("4. Settings")
+
+            choice = input("Choose: ")
+
+            if choice == "1":
+                current_user, role, clearance = login()
+                if current_user:
+                    print(f"Welcome, {current_user} ({role}, {clearance})")
+
+            elif choice == "2":
+                create_account()
+
+            elif choice == "3":
+                print("Shutting down...")
+                break
+
+            elif choice == "4":
+                settings_menu()
+
+        # -------------------------
+        # WORLD 2: LOGGED IN
+        # -------------------------
+        else:
+            print("1. Logout")
+            print("2. Add Task")
+            print("3. Create File")
+            print("4. Read File")
+            print("5. Shutdown")
+            print("6. Delete File")
+            print("7. List Files")
+            print("8. List Users")
+            print("9. List Tasks")
+            print("10. Delete User")
+            print("11. Delete Task")
+            print("12. Mark Task Complete")
+            print("13. Settings")
+
+            if role == "admin":
+                print("14. Admin Panel")
+
+            choice = input("Choose: ")
+
+            if choice == "1":
+                print("Logging out...")
+                current_user = None
+                role = None
+                clearance = None
+
+            elif choice == "2":
+                add_task(current_user)
+
+            elif choice == "3":
+                create_file(current_user)
+
+            elif choice == "4":
+                read_file(current_user)
+
+            elif choice == "5":
+                print("Shutting down...")
+                break
+
+            elif choice == "6":
+                delete_file(current_user)
+
+            elif choice == "7":
+                list_files(current_user)
+
+            elif choice == "8":
+                list_users()
+
+            elif choice == "9":
+                list_tasks(current_user)
+
+            elif choice == "10":
+                delete_user()
+
+            elif choice == "11":
+                delete_task(current_user)
+
+            elif choice == "12":
+                mark_task_complete(current_user)
+
+            elif choice == "13":
+                settings_menu()
+
+            elif choice == "14" and role == "admin":
+                admin_panel(current_user)
+
+# ============================================================
+#  STARTUP WRAPPER
+# ============================================================
+
+def start_os():
+    title_screen()
+    boot_sequence()
+    menu()
+
+
+start_os()
