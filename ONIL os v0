@@ -165,6 +165,19 @@ def list_files(current_user):
   for index, filename in enumerate(files[current_user], 1):
     print(f" {index}) {filename}")
 
+def list_all_files():
+  print("== SHOW ALL FILES ==")
+  if not files:
+    print("FILES NOT FOUND")
+    return
+
+  for user, user_files in files.items():
+    print("=============")
+    print(f"\nUSER: {user}")
+    for filename in user_files:
+      print(f" - {filename}")
+      print("=============")
+
 def edit_files(current_user):
   print("EDIT FILES")
   filename = input("ENTER FILENAME: ")
@@ -239,9 +252,10 @@ def admin_panel(current_user):
     print("== ADMIN PANEL ==")
     print("1) List all users")
     print("2) Make admin")
-    print("3) List all files")
+    print("3) List files")
     print("4) Edit files")
     print("5) Edit user")
+    print("6) List all files")
     print("0) Exit admin panel")
 
     option = input("PICK AN OPTION: ")
@@ -256,6 +270,8 @@ def admin_panel(current_user):
       edit_files(current_user)
     elif option == "5":
       edit_users(current_user)
+    elif option == "6":
+      list_all_files()
     elif option == "0":
       return
 
