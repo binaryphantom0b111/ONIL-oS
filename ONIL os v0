@@ -1,11 +1,20 @@
 import json
+import time
+import sys
 import hashlib
+
+# ============================================================
+#  CONSTANTS & DATABASE LOADING
+# ============================================================
+
+USERS_DB = "users.json"
+FILES_DB = "files.json"
 
 def load_json(path, default):
     try:
         with open(path, "r") as f:
             return json.load(f)
-    except (FileNotFoundError,json.decoder.JSONDecodeError):
+    except (FileNotFoundError, json.decoder.JSONDecodeError):
         with open(path, "w") as f:
             json.dump(default, f, indent=4)
         return default
@@ -14,273 +23,379 @@ def save_json(path, data):
     with open(path, "w") as f:
         json.dump(data, f, indent=4)
 
-# Load databases
-USERS_DB = "users.json"
-FILES_DB = "files.json"
-
 users = load_json(USERS_DB, {})
 files = load_json(FILES_DB, {})
+
+# ============================================================
+#  UTILITY FUNCTIONS
+# ============================================================
+
+def slow_print(text, delay=0.03):
+    for char in text:
+        sys.stdout.write(char)
+        sys.stdout.flush()
+        time.sleep(delay)
+    print()
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-#===================================================
-                # USERS SYSTEM
-#===================================================
-def Login():
-  attempt = 3
-  while attempt > 0:
-    print("== LOGIN ==")
-    username = input("Enter username: ")
-    password = input("Enter password: ")
-    
-    if username in users and users[username]['password'] == hash_password(password):
-      print("Authenticating....")
-      print("Authenticated, access granted ")
-      return username,  users[username]["role"]
-    else:
-      attempt -=1
-      print(f"Authentication failed, {attempt} attempts left ")
-  else:
-    print("0 attempts left, system locked ")
-    return None,None
+# ============================================================
+#  BOOT SYSTEM
+# ============================================================
 
+def title_screen():
+    print("\n" * 3)
+    print(r"""
+ ██████╗ ███╗   ██╗██╗██╗     
+██╔═══██╗████╗  ██║██║██║     
+██║   ██║██╔██╗ ██║██║██║     
+██║   ██║██║╚██╗██║██║██║     
+╚██████╔╝██║ ╚████║██║███████╗
+ ╚═════╝ ╚═╝  ╚═══╝╚═╝╚══════╝
+""")
+    print("               O   N   I   L")
+    print("\n" * 2)
+    time.sleep(1.2)
 
-def create_account():
-  print("== SIGN UP ==")
-  username = input("New username: ")
-  if username in users:
-    print("Username already exist ")
-    return
-  password = input("New password: ")
-  users[username] = {
-    "password": hash_password(password),
-    "role": 'user'
-  }
-  save_json(USERS_DB, users)
-  print("Account successfully created ")
+def boot_sequence():
+    steps = [
+        "INITIALIZING KERNEL MODULES...",
+        "DECRYPTING SYSTEM MEMORY...",
+        "BOOTSTRAPPING ONIL ENVIRONMENT...",
+        "ESTABLISHING ENCRYPTED CHANNELS...",
+        "LAUNCHING ONIL CORE..."
+    ]
+    for step in steps:
+        slow_print(step + " [OK]", 0.02)
+        time.sleep(0.1)
+    print()
+
+# ============================================================
+#  ADMIN SYSTEM
+# ============================================================
 
 def admin_exists():
-  for username in users:
-    if users[username]['role'] == 'admin':
-      return True
-  return False
-
-
+    for username in users:
+        if users[username].get("role") == "admin":
+            return True
+    return False
 
 def setup_admin():
-  print("CREATE ADMIN")
-  username = input("CREATE USER ADMIN: ")
-  password = input("CREATE ADMIN PASSWORD: ")
-  users[username] = {
-    "password": hash_password(password),
-    "role": 'admin'
-  }
-  save_json(USERS_DB, users)
-  print(f"ADMIN ACCOUNT  ' {username} ' SUCCESSFULLY CREATED")
+    print("== FIRST TIME SETUP ==")
+    print("NO ADMIN ACCOUNT FOUND.")
+    print("CREATE THE FIRST ADMIN ACCOUNT.")
+
+    username = input("ADMIN USERNAME: ")
+    password = input("ADMIN PASSWORD: ")
+
+    users[username] = {
+        "password": hash_password(password),
+        "role": "admin",
+        "clearance": "TOP SECRET"
+    }
+    save_json(USERS_DB, users)
+    print(f"ADMIN ACCOUNT '{username}' CREATED.")
 
 if not admin_exists():
-  setup_admin()
+    setup_admin()
 
-def edit_users(current_user):
-  print("EDIT USERS")
-  username = input("ENTER USER TO EDIT: ")
-  if username not in users:
-    print("USERNAME NOT FOUND")
-    return
+def make_admin():
+    print("== MAKE ADMIN ==")
+    username = input("USERNAME TO PROMOTE: ")
 
-  print(f"Current username: {username}")
-  print(f"Current password: {users[username]['password']}")
-  print(f"Current role: {users[username]['role']}")
+    if username not in users:
+        print("USER NOT FOUND.")
+        return
 
-  new_username = input(" NEW USERNAME (Leave BLANK TO LEAVE THE SAME): ")
-  new_password = input(" NEW PASSWORD (Leave BLANK TO LEAVE THE SAME): ")
-
-  
-  if new_username:
-    users[username] = users.pop(username)
-    username = new_username
-
-    
-  if new_password:
-    users[username]['password'] = hash_password(new_password)
+    users[username]["role"] = "admin"
+    users[username]["clearance"] = "TOP SECRET"
     save_json(USERS_DB, users)
-    print("USER UPDATED")
-
-def list_users(current_user):
-    print("== Users ==")
-    if not users:
-        print("No users found.")
-        return
-    for index, username in enumerate(users, start=1):
-        role = users[username].get("role", "user")
-        print(f"{index}. {username} ({role})")
-
-#======================================================
-                    #file system
-#======================================================
-
-def create_files(current_user):
-  print("== CREATE FILE == ")
-  filename = input("ENTER FILENAME: _")
-  if current_user not in files:
-    files[current_user] = {}
-    
-  if filename in files[current_user]:
-    print("FILENAME ALREADY EXIST ")
-    return
-
-  content = input("ENTER FILE CONTENT: _")
-  files[current_user][filename] = content
-  save_json(FILES_DB, files)
-  print("FILE SUCCESSFULLY CREATED ")
-
-def open_file(current_user):
-  print(" == OPEN FILE == ")
-  filename = input("ENTER FILENAME: _")
-  if current_user not in files or filename not in files[current_user] :
-    print("FILENAME DOES NOT EXIST ")
-    return
-  print(" == FILE CONTENT == ")
-  print(files[current_user][filename])
-
-def del_files(current_user):
-  print(" == DELETE FILE == ")
-  filename = input("ENTER FILENAME: _ ")
-  if current_user not in files or filename not in files[current_user]:
-    print(" == FILE DOES NOT  == ")
-    return
-
-  del files[current_user][filename]
-  save_json(FILES_DB, files)
-  print("FILE SUCCESSFULY DELETED")
-
-
-def list_files(current_user):
-  print(" == LIST FILES == ")
-  if current_user not in files or  not  files[current_user]:
-    print("FILE NOT FOUND")
-    return
-
-  for index, filename in enumerate(files[current_user], 1):
-    print(f" {index}) {filename}")
-
-def list_all_files():
-  print("== SHOW ALL FILES ==")
-  if not files:
-    print("FILES NOT FOUND")
-    return
-
-  for user, user_files in files.items():
-    print("=============")
-    print(f"\nUSER: {user}")
-    for filename in user_files:
-      print(f" - {filename}")
-      print("=============")
-
-def edit_files(current_user):
-  print("EDIT FILES")
-  filename = input("ENTER FILENAME: ")
-  if current_user not in files or filename not in files[current_user]:
-    print("FILE NOT FOUND")
-    return
-
-  # current content
-  print(files[current_user][filename])
-  
-  new_content = input("ENTER NEW CONTENT: ")
-  files[current_user][filename] = new_content
-  save_json(FILES_DB, files)
-  print("FILE UPDATED")
-#============================================================
-                        #MENU SYSTEM
-#============================================================
-
-  
-def main():
-  current_user = None
-  role = None
-  while True:
-    if current_user:
-      print("== TORA YP OS ==")
-      print("1) CREATE FILE ")
-      print("2) READ FILE ")
-      print("3) DELETE FILE ")
-      if role == "admin":
-        print("4) ADMIN PANEL ")
-      print("0) LOG OUT ")
-   
-    else:
-      print("\n=== MENU ===")
-      print("1. LOGIN")   
-      print("2. CREATE ACCOUNT")
-      print("0. EXIT")
-  
-  
-    option = input("PICK YOUR OPTION: ")
-    if not current_user:
-      if option == "1":
-        user,role = Login()
-        if user:
-          print(f"Welcome, {user} {role}")
-          current_user = user
-      elif option == "2":
-        create_account()
-      elif option == "0":
-        print("PROGRAM TERMINATED...")
-        return
-    else:
-      
-      if option == "1":
-        create_files(current_user)
-      elif option == "2":
-        open_file(current_user)
-      elif option == "3":
-        del_files(current_user)
-      elif option == "4" and role == 'admin':
-        admin_panel(current_user)
-      elif option == "0":
-        print("LOGGING OUT...")
-        current_user = None
-#==========================================
-#               ADMIN PANEL
-#==========================================
-
+    print(f"{username} IS NOW AN ADMIN.")
 
 def admin_panel(current_user):
-  while True:
-    print("== ADMIN PANEL ==")
-    print("1) List all users")
-    print("2) Make admin")
-    print("3) List files")
-    print("4) Edit files")
-    print("5) Edit user")
-    print("6) List all files")
-    print("0) Exit admin panel")
+    while True:
+        print("== ADMIN PANEL ==")
+        print("1. LIST ALL USERS")
+        print("2. MAKE ADMIN")
+        print("3. LIST ALL FILES")
+        print("4. EDIT USER")
+        print("0. BACK")
 
-    option = input("PICK AN OPTION: ")
+        choice = input("CHOOSE: ").strip()
 
-    if option == "1":
-      list_users(current_user)
-    elif option == "2":
-      setup_admin()
-    elif option == "3":
-      list_files(current_user)
-    elif option == "4":
-      edit_files(current_user)
-    elif option == "5":
-      edit_users(current_user)
-    elif option == "6":
-      list_all_files()
-    elif option == "0":
-      return
+        if choice == "1":
+            list_users()
+        elif choice == "2":
+            make_admin()
+        elif choice == "3":
+            list_all_files()
+        elif choice == "4":
+            edit_user()
+        elif choice == "0":
+            return
 
-    
-        
-      
+# ============================================================
+#  USER SYSTEM
+# ============================================================
 
-    
-      
-    
+def create_account():
+    print("== CREATE ACCOUNT ==")
+    while True:
+        username = input("NEW USERNAME: ")
+        if username in users:
+            print("USERNAME ALREADY EXISTS.")
+            return
+        password = input("NEW PASSWORD: ")
+        if len(password) >= 3:
+            break
+        print("PASSWORD TOO SHORT.")
+
+    users[username] = {
+        "password": hash_password(password),
+        "role": "user",
+        "clearance": "SECRET"
+    }
+    save_json(USERS_DB, users)
+    slow_print("ACCOUNT SUCCESSFULLY CREATED.")
+
+def login():
+    attempt = 3
+    while attempt > 0:
+        print("== LOGIN ==")
+        username = input("USERNAME: ")
+        password = input("PASSWORD: ")
+
+        if username in users and users[username]["password"] == hash_password(password):
+            print("AUTHENTICATING...")
+            time.sleep(0.3)
+            print("== ACCESS GRANTED ==")
+            return username, users[username]["role"], users[username]["clearance"]
+
+        attempt -= 1
+        print(f"WRONG CREDENTIALS. {attempt} ATTEMPTS LEFT.")
+
+    print("ACCESS DENIED.")
+    return None, None, None
+
+def list_users():
+    print("== USERS ==")
+    if not users:
+        print("NO USERS FOUND.")
+        return
+    for index, username in enumerate(users, start=1):
+        print(f"{index}. {username} ({users[username]['role'].upper()})")
+
+def edit_user():
+    print("== EDIT USER ==")
+    username = input("USERNAME TO EDIT: ")
+
+    if username not in users:
+        print("USER NOT FOUND.")
+        return
+
+    new_username = input("NEW USERNAME (BLANK = SAME): ")
+    new_password = input("NEW PASSWORD (BLANK = SAME): ")
+
+    if new_username:
+        users[new_username] = users.pop(username)
+        username = new_username
+
+    if new_password:
+        users[username]["password"] = hash_password(new_password)
+
+    save_json(USERS_DB, users)
+    print("USER UPDATED.")
+
+def delete_user():
+    print("== DELETE USER ==")
+    username = input("USERNAME TO DELETE: ")
+
+    if username not in users:
+        print("USER NOT FOUND.")
+        return
+    if users[username]["role"] == "admin":
+        print("CANNOT DELETE ADMIN.")
+        return
+
+    del users[username]
+    save_json(USERS_DB, users)
+    print("USER DELETED.")
+
+# ============================================================
+#  FILE SYSTEM
+# ============================================================
+
+def create_file(current_user):
+    print("== CREATE FILE ==")
+    filename = input("FILE NAME: ")
+
+    if current_user not in files:
+        files[current_user] = {}
+
+    if filename in files[current_user]:
+        print("FILE ALREADY EXISTS.")
+        return
+
+    content = input("FILE CONTENT: ")
+    files[current_user][filename] = content
+    save_json(FILES_DB, files)
+    print("FILE CREATED.")
+
+def read_file(current_user):
+    print("== READ FILE ==")
+    filename = input("FILE NAME: ")
+
+    if current_user not in files or filename not in files[current_user]:
+        print("FILE NOT FOUND.")
+        return
+
+    print("== FILE CONTENT ==")
+    print(files[current_user][filename])
+
+
+def edit_files(current_user):
+    print("== EDIT FILE ==")
+    filename = input("ENTER FILENAME: ")
+
+    # Check if user has files and if file exists
+    if current_user not in files or filename not in files[current_user]:
+        print("FILE NOT FOUND.")
+        return
+
+    # Show current content
+    print("== CURRENT CONTENT ==")
+    print(files[current_user][filename])
+
+    # Get new content
+    new_content = input("ENTER NEW CONTENT: ")
+
+    # Save changes
+    files[current_user][filename] = new_content
+    save_json(FILES_DB, files)
+
+    print("FILE UPDATED.")
+
   
-main()
+def delete_file(current_user):
+    print("== DELETE FILE ==")
+    filename = input("FILE NAME: ")
+
+    if current_user not in files or filename not in files[current_user]:
+        print("FILE NOT FOUND.")
+        return
+
+    del files[current_user][filename]
+    save_json(FILES_DB, files)
+    print("FILE DELETED.")
+
+def list_files(current_user):
+    print("== YOUR FILES ==")
+    if current_user not in files or not files[current_user]:
+        print("NO FILES FOUND.")
+        return
+    for index, filename in enumerate(files[current_user], start=1):
+        print(f"{index}. 📁 {filename}")
+
+def list_all_files():
+    print("== ALL USER FILES ==")
+    if not files:
+        print("NO FILES FOUND.")
+        return
+    for user, user_files in files.items():
+        print(f"\nUSER: {user}")
+        if not user_files:
+            print("  NO FILES.")
+            continue
+        for filename in user_files:
+            print(f"  📁 {filename}")
+
+# ============================================================
+#  MAIN MENU
+# ============================================================
+
+def menu():
+    current_user = None
+    role = None
+    clearance = None
+
+    while True:
+        print("\n=== MAIN MENU ===")
+
+        if not current_user:
+            print("0. SHUTDOWN")
+            print("1. LOGIN")
+            print("2. CREATE ACCOUNT")
+
+            choice = input("CHOOSE: ").strip()
+
+            if choice == "0":
+                print("SHUTTING DOWN...")
+                break
+
+            elif choice == "1":
+                current_user, role, clearance = login()
+                if current_user:
+                    print(f"WELCOME, {current_user} ({role.upper()}, {clearance.upper()})")
+
+            elif choice == "2":
+                create_account()
+
+        else:
+            print("0. LOGOUT")
+            print("1. CREATE FILE")
+            print("2. READ FILE")
+            print("3. EDIT FILE")
+            print("4. DELETE FILE")
+            print("5. LIST FILES")
+            print("6. LIST USERS")
+            print("7. DELETE USER")
+            print("8. EDIT USER")
+
+            if role == "admin":
+                print("8. ADMIN PANEL")
+
+            choice = input("CHOOSE: ").strip()
+
+            if choice == "0":
+                print("LOGGING OUT...")
+                current_user = None
+                role = None
+                clearance = None
+
+            elif choice == "1":
+                create_file(current_user)
+
+            elif choice == "2":
+                read_file(current_user)
+            elif choice == "3":
+                edit_files(current_user)
+
+            elif choice == "4":
+                delete_file(current_user)
+
+            elif choice == "5":
+                list_files(current_user)
+
+            elif choice == "6":
+                list_users()
+
+            elif choice == "7":
+                delete_user()
+
+            elif choice == "8":
+                edit_user()
+
+            elif choice == "9" and role == "admin":
+                admin_panel(current_user)
+
+# ============================================================
+#  STARTUP WRAPPER
+# ============================================================
+
+def start_os():
+    title_screen()
+    boot_sequence()
+    menu()
+
+start_os()
