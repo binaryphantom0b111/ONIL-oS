@@ -395,7 +395,10 @@ def menu():
 
 def start_os():
     title_screen()
-    boot_sequence()
-    menu()
 
+    choice = input("PRESS S TO SKIP BOOT OR ENTER TO CONTINUE: ").strip().upper()
+    if choice != "S":
+        boot_sequence()
+
+    menu()
 start_os()
